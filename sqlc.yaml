@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: postgresql
+      
+    schema:
+      - "sql/schema/*.sql"     # migration / DDL files
+    queries:
+      - "sql/queries/*.sql"    # query files
+    gen:
+      go:
+        package: "database"
+        out: "internal/database"

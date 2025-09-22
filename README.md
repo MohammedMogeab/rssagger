@@ -97,7 +97,7 @@ Base URL: `http://localhost:<PORT>/v1`
 
 - Get my posts: `GET /posts` (auth required)
   - Returns posts for feeds you follow, ordered by `published_at` desc.
-  - Note: current implementation limits results to 4.
+  - Optional query: `?limit=10` (defaults to 4, max 100).
 
 ### Example cURL
 
@@ -140,7 +140,10 @@ The server starts a background worker that:
 - Inserts posts (skipping duplicates by unique URL)
 - Marks the feed as fetched (`last_fetch_at = now()`)
 
-Configuration is currently in code (`startscrapper` in `scrapper.go`).
+Configurable via env:
+
+- `SCRAPER_CONCURRENCY` (default 3)
+- `SCRAPER_INTERVAL_SECONDS` (default 60)
 
 ## Project Structure
 

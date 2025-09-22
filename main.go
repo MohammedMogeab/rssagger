@@ -1,11 +1,13 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
+    "database/sql"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    "strconv"
+    "time"
 
 	"github.com/MohammedMogeab/rssagger/internal/database"
 	"github.com/go-chi/chi/v5"
@@ -15,7 +17,8 @@ import (
 )
 
 type apiconfig struct{
-	db*database.Queries;
+    db *database.Queries
+    dbConn *sql.DB
 }
 
 
@@ -26,10 +29,10 @@ func main() {
 	fmt.Println("Hello, World!")
 	godotenv.Load(".env")
 	
-	portString:=os.Getenv("PORT")
-	if(portString==""){
-		log.Fatal("PORT not set in .env file")
-	}
+    portString:=os.Getenv("PORT")
+    if(portString==""){
+        log.Fatal("PORT not set in .env file")
+    }
  
   
 
@@ -40,14 +43,15 @@ func main() {
 
 
       conn,err:= sql.Open("postgres",dbUrl)
-	  if err != nil {
-		log.Fatal("cannot connect to db:",err)
+      if err != nil {
+        log.Fatal("cannot connect to db:",err)
 
-	  }
+      }
 
-	  apiCfg:=apiconfig{
-		db:database.New(conn),
-	  }
+      apiCfg:=apiconfig{
+        db: database.New(conn),
+        dbConn: conn,
+      }
     
 
  
@@ -64,7 +68,7 @@ func main() {
   }))
 
  routerv2:=chi.NewRouter()
- routerv2.Get("/healthz",HandlerRead)
+ routerv2.Get("/healthz",apiCfg.HandlerHealthz)
  routerv2.Get("/error",HandlerError)
  routerv2.Post("/users",apiCfg.HandlerCreateUser)
  routerv2.Get("/users",apiCfg.MiddlewareAuth(apiCfg.HandlerGetUser))
@@ -80,7 +84,22 @@ routerv2.Get("/posts",apiCfg.MiddlewareAuth(apiCfg.HandlerGetPostForUser))
 r.Mount("/v1",routerv2)
 
 
- go startscrapper(apiCfg.db,3,5000)
+ // Scraper configuration from environment
+ // SCRAPER_CONCURRENCY: int (default 3)
+ // SCRAPER_INTERVAL_SECONDS: int seconds (default 60)
+ concurrency := 3
+ if v := os.Getenv("SCRAPER_CONCURRENCY"); v != "" {
+     if n, err := strconv.Atoi(v); err == nil && n > 0 {
+         concurrency = n
+     }
+ }
+ intervalSeconds := 60
+ if v := os.Getenv("SCRAPER_INTERVAL_SECONDS"); v != "" {
+     if n, err := strconv.Atoi(v); err == nil && n > 0 {
+         intervalSeconds = n
+     }
+ }
+ go startscrapper(apiCfg.db, concurrency, time.Duration(intervalSeconds)*time.Second)
   
 
  r.Get("/hello",func(w http.ResponseWriter, r *http.Request) {

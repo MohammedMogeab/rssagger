@@ -1,10 +1,11 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"time"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "time"
+    "strconv"
 
 	"github.com/MohammedMogeab/rssagger/internal/database"
 	"github.com/google/uuid"
@@ -51,14 +52,24 @@ respondWithJSON(w, http.StatusOK, databaseUserToUser(user))
 }
 
 func (apicfing *apiconfig) HandlerGetPostForUser(w http.ResponseWriter, r *http.Request,user database.User) {
-	 posts,err:= apicfing.db.GetPostsForUser(r.Context(),database.GetPostsForUserParams{
-		UserID: user.ID,
-		Limit:  4,
-	  })
-	  if err != nil {
-		respondWithError(w,http.StatusInternalServerError,"failed to get posts for user")
-		return
-	  }
+     // Optional ?limit=n query param; defaults to previous behavior (4)
+     limit := int32(4)
+     if v := r.URL.Query().Get("limit"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil {
+            if n < 1 { n = 1 }
+            if n > 100 { n = 100 }
+            limit = int32(n)
+        }
+     }
+
+     posts,err:= apicfing.db.GetPostsForUser(r.Context(),database.GetPostsForUserParams{
+        UserID: user.ID,
+        Limit:  limit,
+      })
+      if err != nil {
+        respondWithError(w,http.StatusInternalServerError,"failed to get posts for user")
+        return
+      }
 
 respondWithJSON(w, http.StatusOK, databasePosttoPostArray(posts))
 }
